@@ -106,22 +106,6 @@ public class JdbcConnectFactory extends Thread{
 		} else {
 			inUseList.remove(connection);			
 		}
-//		if(connection == null) {
-//			return;
-//		} else {
-//			try {
-//				boolean isClose = connection.isClosed();
-//				if(isClose) {
-//					throw new RuntimeException("Connection has closed.Can't not relase this connection.");
-//				}
-//			} catch (SQLException e) {
-//				e.printStackTrace();
-//			}
-//		}
-//		int maxNum =  NumberUtils.toInt(JdbcConfig.getConfigProperty(JdbcConfig.MAX_NUM));
-//		if(synList.size() + inUseList.size() < maxNum) {
-//			inUseList.remove(connection);
-//		}
 	}
 	
 	/**
