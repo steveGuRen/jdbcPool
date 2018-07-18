@@ -34,14 +34,14 @@ public class JdbcConnectFactory extends Thread{
 	 * 不可以在事务线程里面对这个List进行update操作，只能进行ReadOnly的操作，否则可能出现守护线程遍历该list的时候大小异常<br>
 	 * 只允许守护进程和单例初始化的时候对其进行update操作<br><br>
 	 */
-	private static List<Connection> synList = Collections.synchronizedList(new LinkedList<Connection>());
+	private static List<AbstractConnection> synList = Collections.synchronizedList(new LinkedList<AbstractConnection>());
 
 	/**
 	 * 正在使用的连接<br>
 	 * 事务线程才能对其进行update操作<br>
 	 * 通过这个实现线程池里面connection的资源隔离
 	 */
-	private static Set<Connection> inUseList = Collections.synchronizedSet(new HashSet<Connection>());
+	private static Set<AbstractConnection> inUseList = Collections.synchronizedSet(new HashSet<AbstractConnection>());
 	
 	/**
 	 * 单例，必须放置到所有属性定义的最后一个，防止因为类初始化时，类的成员变量初始化顺序不一致导致的问题
@@ -52,7 +52,8 @@ public class JdbcConnectFactory extends Thread{
 	private JdbcConnectFactory() {
 		initialPool();
 		LOGGER.info("jdbc connection initial is complete.");
-		JdbcConnectFactory.isStart = true;
+		JdbcConnectFactory.isStart = false;
+		this.setName("DAEMON THREAD");
 		this.start();
 		LOGGER.info("pool daemon Thread is started.");
 	}
@@ -65,10 +66,14 @@ public class JdbcConnectFactory extends Thread{
 			Class.forName(JdbcConfig.getConfigProperty(JdbcConfig.JDBC_DRIVER));
 			for(int i = 0; synList.size() + inUseList.size() < minNum; i++) {
 				conn = DriverManager.getConnection(url);
+				AbstractConnection asc = new AbstractConnection(conn);
 				if(LOGGER.isDebugEnabled()) {
-					LOGGER.debug(conn.toString() + "is connected.");
+				    	LOGGER.debug(asc.toString() + " is connected. ");
 				}
-				synList.add(conn);
+				synList.add(asc);
+			}
+			if(LOGGER.isDebugEnabled()) {
+				LOGGER.debug("Connections in pool is inited.");
 			}
 		} catch (ClassNotFoundException | SQLException e) {
 			e.printStackTrace();
@@ -78,20 +83,21 @@ public class JdbcConnectFactory extends Thread{
 	
 	} 
 			
-	private Connection getConnection()	{
+	private AbstractConnection getConnection()	{
 		if(synList.isEmpty()) {
 			return null;
 		} else {
 			for(int i = 0; i < synList.size(); i++) {
-				Connection connection = synList.get(i);
-				if(inUseList.contains(connection) || connection == null) {
+				AbstractConnection asc = synList.get(i);
+				Connection connection = asc.getConnection();
+				if(inUseList.contains(asc) || connection == null) {
 					continue;
 				} else {
 					if(LOGGER.isDebugEnabled()) {
 						LOGGER.info("Thread " + Thread.currentThread().getName() + " get a connection :" + connection);
 					}
-					inUseList.add(connection);
-					return connection;
+					inUseList.add(asc);
+					return asc;
 				}
 			}
 			LOGGER.info("No connection can use in pool.All Connection is inused.");
@@ -100,11 +106,11 @@ public class JdbcConnectFactory extends Thread{
 		}
 	}		
 	
-	private void releaseConnection(Connection connection) {
-		if(connection == null) {
+	private void releaseConnection(AbstractConnection asc) {
+		if(asc == null) {
 			return;
 		} else {
-			inUseList.remove(connection);			
+			inUseList.remove(asc);			
 		}
 	}
 	
@@ -115,9 +121,11 @@ public class JdbcConnectFactory extends Thread{
 	@Override
 	public void run() {
 		int sleepTime =  NumberUtils.toInt(JdbcConfig.getConfigProperty(JdbcConfig.HEALTH_THREAD_SLEEPTIEM));
-		while(isStart) {
-			for(Iterator<Connection> i = synList.iterator(); i.hasNext();) {
-				Connection conn = i.next();
+		while(true) {
+			
+			for(Iterator<AbstractConnection> i = synList.iterator(); i.hasNext() && isStart;) {
+				AbstractConnection asc = i.next();
+				Connection conn = asc.getConnection();
 				boolean isClose = false;
 				boolean isNull = true;
 				try {
@@ -136,8 +144,9 @@ public class JdbcConnectFactory extends Thread{
 					try {
 						Class.forName(JdbcConfig.getConfigProperty(JdbcConfig.JDBC_DRIVER));
 						conn = DriverManager.getConnection(url);
+						asc.setConnection(conn);
 					    if(LOGGER.isDebugEnabled()) {
-					    	LOGGER.debug(conn.toString() + "is connected.");
+					    	LOGGER.debug(asc.toString() + " is reconnected. ");
 					    }
 					} catch (ClassNotFoundException | SQLException e) {
 						e.printStackTrace();
@@ -159,7 +168,7 @@ public class JdbcConnectFactory extends Thread{
 	}
 
 	public static void main(String[] args) throws InterruptedException{
-		for(int i = 0; i < 10; i++) {
+		for(int i = 1; i < 10; i++) {
 			Thread thread = new Thread(new Runnable() {
 				
 				@Override
@@ -171,7 +180,7 @@ public class JdbcConnectFactory extends Thread{
 					}
 				}
 			});
-			thread.setName("THREAD " + i + ".");
+			thread.setName("THREAD denghuizhi" + i + ".");
 			thread.start();
 		}
 		
@@ -180,12 +189,19 @@ public class JdbcConnectFactory extends Thread{
 	private static void RunSql() throws InterruptedException {
 		PreparedStatement ptmt = null;
 		ResultSet rs = null;
+		int i = 1;
 		while(true) {
-			Connection t = JdbcConnectFactory.INSTANCE.getConnection();
+			AbstractConnection asc = JdbcConnectFactory.INSTANCE.getConnection();
+			Connection t = asc.getConnection();
 			try {
 				t.setAutoCommit(false);
 				doQuery(ptmt, rs, t);
 				t.commit();
+				i++;
+				if(i % 5 == 0) {
+					LOGGER.debug("Connection: " + t + "is closed");
+					t.close();
+				}
 			} catch (SQLException e1) {
 				e1.printStackTrace();  //SQL相关的异常抛出打印
 				try {
@@ -198,14 +214,16 @@ public class JdbcConnectFactory extends Thread{
 							e2.printStackTrace();
 						} finally {
 							t = null;
+							JdbcConnectFactory.isStart = true;//启动修复进程
 						}
 					}
+				} finally {
+					
 				}
 			} finally {
-				
-				JdbcConnectFactory.INSTANCE.releaseConnection(t);
+				JdbcConnectFactory.INSTANCE.releaseConnection(asc);
 			}
-			LOGGER.debug("保持的线程池有：" + JdbcConnectFactory.synList.size());
+			LOGGER.debug("connected number:" + (JdbcConnectFactory.synList.size() - JdbcConnectFactory.inUseList.size()));
 			Thread.sleep(3000);
 		}
 	}
