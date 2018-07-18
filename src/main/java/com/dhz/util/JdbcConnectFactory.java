@@ -84,13 +84,7 @@ public class JdbcConnectFactory extends Thread{
 		} else {
 			for(int i = 0; i < synList.size(); i++) {
 				Connection connection = synList.get(i);
-				boolean isClose = true;
-				try {
-					isClose = connection.isClosed();
-				} catch (SQLException e) {
-					e.printStackTrace();
-				}
-				if(inUseList.contains(connection) || isClose) {
+				if(inUseList.contains(connection) || connection == null) {
 					continue;
 				} else {
 					if(LOGGER.isDebugEnabled()) {
@@ -141,12 +135,18 @@ public class JdbcConnectFactory extends Thread{
 			for(Iterator<Connection> i = synList.iterator(); i.hasNext();) {
 				Connection conn = i.next();
 				boolean isClose = false;
+				boolean isNull = true;
 				try {
-					isClose = conn.isClosed();
+					if(null == conn) {
+						isNull = true;
+					} else {
+						isNull = false;
+						isClose = conn.isClosed();
+					}
 				} catch (SQLException e) {
 					e.printStackTrace();
 				}
-				if(isClose) {
+				if(isClose || isNull) {
 					String url = JdbcConfig.getConfigProperty(JdbcConfig.CONNECT_URL);
 					int minNum =  NumberUtils.toInt(JdbcConfig.getConfigProperty(JdbcConfig.MIN_NUM));
 					try {
@@ -175,6 +175,25 @@ public class JdbcConnectFactory extends Thread{
 	}
 
 	public static void main(String[] args) throws InterruptedException{
+		for(int i = 0; i < 10; i++) {
+			Thread thread = new Thread(new Runnable() {
+				
+				@Override
+				public void run() {
+					try {
+						RunSql();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			});
+			thread.setName("THREAD " + i + ".");
+			thread.start();
+		}
+		
+	}
+
+	private static void RunSql() throws InterruptedException {
 		PreparedStatement ptmt = null;
 		ResultSet rs = null;
 		while(true) {
