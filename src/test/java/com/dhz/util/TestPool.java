@@ -48,7 +48,7 @@ public class TestPool {
 				doQuery(ptmt, rs, t);
 				t.commit();
 				i++;
-				if(i % 20 == 0) {
+				if(i % 2000 == 0) {
 					LOGGER.debug("Connection: " + t + "is closed");
 					t.close();
 				}
@@ -73,7 +73,7 @@ public class TestPool {
 			} finally {
 				JdbcConnectFactory.releaseConnection(asc);
 			}
-			Thread.sleep(3000);
+//			Thread.sleep(3000);
 		}
 	}
 	
