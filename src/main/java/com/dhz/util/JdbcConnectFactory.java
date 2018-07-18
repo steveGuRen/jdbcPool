@@ -137,7 +137,6 @@ public class JdbcConnectFactory extends Thread{
 	public void run() {
 		int sleepTime =  NumberUtils.toInt(JdbcConfig.getConfigProperty(JdbcConfig.HEALTH_THREAD_SLEEPTIEM));
 		while(true) {
-			
 			for(Iterator<AbstractConnection> i = synList.iterator(); i.hasNext() && isStart;) {
 				AbstractConnection asc = i.next();
 				Connection conn = asc.getConnection();
@@ -171,16 +170,17 @@ public class JdbcConnectFactory extends Thread{
 				}
 			}
 			try {
-				Thread.sleep(sleepTime);
 				if(LOGGER.isDebugEnabled()) {
 					LOGGER.debug("Health thread is completed.");
 					LOGGER.debug("connected number:" + (JdbcConnectFactory.inUseList.size()));
 					LOGGER.debug("remaid number:" + (JdbcConnectFactory.synList.size() - JdbcConnectFactory.inUseList.size()));
-
+					
 				}
+				Thread.sleep(sleepTime);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
+			Thread.yield();
 		}
 		
 	}
