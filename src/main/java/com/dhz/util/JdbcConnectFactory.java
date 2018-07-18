@@ -98,7 +98,7 @@ public class JdbcConnectFactory extends Thread{
 					continue;
 				} else {
 					if(LOGGER.isDebugEnabled()) {
-						LOGGER.info("Thread " + Thread.currentThread().getName() + " get a connection :" + connection);
+						LOGGER.info("Thread " + Thread.currentThread().getName() + " get a connection (" + connection + ") in AbstractConnection(" + asc + ")");
 					}
 					inUseList.add(asc);
 					return asc;
