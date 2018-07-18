@@ -18,12 +18,11 @@ import org.slf4j.LoggerFactory;
 public class JdbcConnectFactory {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(JdbcConnectFactory.class);
-
-	private Connection[] connectionList = new Connection[0];
-	
-	private static final JdbcConnectFactory INSTANCE = new JdbcConnectFactory();
 	
 	private static List<Connection> synList = Collections.synchronizedList(new LinkedList<Connection>());
+
+	private static final JdbcConnectFactory INSTANCE = new JdbcConnectFactory();
+	
 	
 	private JdbcConnectFactory() {
 		initialPool();
@@ -32,10 +31,11 @@ public class JdbcConnectFactory {
 	private void initialPool() {
 		String url = JdbcConfig.getConfigProperty(JdbcConfig.CONNECT_URL);
 		int minNum =  NumberUtils.toInt(JdbcConfig.getConfigProperty(JdbcConfig.MIN_NUM));
+		Connection conn = null;
 		try {
 			Class.forName(JdbcConfig.getConfigProperty(JdbcConfig.JDBC_DRIVER));
 			for(int i = 0; i < minNum; i++) {
-				Connection conn = DriverManager.getConnection(url);
+				conn = DriverManager.getConnection(url);
 				if(LOGGER.isDebugEnabled()) {
 					LOGGER.debug(conn.toString() + "is connected.");
 				}
@@ -43,6 +43,8 @@ public class JdbcConnectFactory {
 			}
 		} catch (ClassNotFoundException | SQLException e) {
 			e.printStackTrace();
+		} finally {
+			
 		}
 		LOGGER.info("jdbc connection initial is complete.");
 	} 
