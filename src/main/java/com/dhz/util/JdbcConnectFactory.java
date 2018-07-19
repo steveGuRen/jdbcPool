@@ -176,8 +176,9 @@ public class JdbcConnectFactory extends Thread{
 					LOGGER.debug("remaid number:" + (JdbcConnectFactory.synList.size() - JdbcConnectFactory.inUseList.size()));
 					
 				}
+				isStart = false;
 				Thread.sleep(sleepTime);
-			} catch (InterruptedException e) {
+			} catch (Exception e) {
 				e.printStackTrace();
 			}
 			Thread.yield();
