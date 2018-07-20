@@ -94,7 +94,15 @@ public class JdbcConnectFactory extends Thread{
 			for(int i = 0; i < synList.size(); i++) {
 				AbstractConnection asc = synList.get(i);
 				Connection connection = asc.getConnection();
-				if(inUseList.contains(asc) || connection == null) {
+				boolean isClosed = true;
+				try {
+					isClosed = connection.isClosed();
+				} catch (SQLException e) {
+					e.printStackTrace();
+				} finally {
+					
+				}
+				if(inUseList.contains(asc) || connection == null || isClosed) {
 					continue;
 				} else {
 					if(LOGGER.isDebugEnabled()) {
