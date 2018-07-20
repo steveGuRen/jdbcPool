@@ -1,11 +1,13 @@
 package com.dhz.util;
 
+import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -14,16 +16,20 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import javax.sql.DataSource;
+
 import org.apache.commons.lang.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.dhz.jdbc.AbstractConnection;
 
 /**
  * 
  * @author steve
  * 判断一个连接是否有效，应该是在连接执行SQL的时候进行判断，而不是在守护进程里面进行判断，守护进程是根据已经catch掉异常close的连接进行修复
  */
-public class JdbcConnectFactory extends Thread{
+public class JdbcConnectFactory extends Thread implements DataSource{
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(JdbcConnectFactory.class);
 	
@@ -94,7 +100,14 @@ public class JdbcConnectFactory extends Thread{
 			for(int i = 0; i < synList.size(); i++) {
 				AbstractConnection asc = synList.get(i);
 				Connection connection = asc.getConnection();
-				if(inUseList.contains(asc) || connection == null) {
+				boolean isClosed = true;
+				try {
+					isClosed = connection.isClosed();
+				} catch (SQLException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				if(inUseList.contains(asc) || connection == null || isClosed) {
 					continue;
 				} else {
 					if(LOGGER.isDebugEnabled()) {
@@ -184,5 +197,53 @@ public class JdbcConnectFactory extends Thread{
 		}
 		
 	}
+
+	
+	
+	@Override
+	public <T> T unwrap(Class<T> iface) throws SQLException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public boolean isWrapperFor(Class<?> iface) throws SQLException {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public PrintWriter getLogWriter() throws SQLException {
+		return new PrintWriter(System.out);
+	}
+
+	@Override
+	public void setLogWriter(PrintWriter out) throws SQLException {
+		return;
+		
+	}
+
+	@Override
+	public void setLoginTimeout(int seconds) throws SQLException {
+		// TODO Auto-generated method stub
+	}
+
+	@Override
+	public int getLoginTimeout() throws SQLException {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public java.util.logging.Logger getParentLogger() throws SQLFeatureNotSupportedException {
+		// TODO Auto-generated method stub
+		return java.util.logging.Logger.getAnonymousLogger();
+	}
+
+	@Override
+	public Connection getConnection(String username, String password) throws SQLException {
+		return getConnection();
+	}
+	
 	
 }

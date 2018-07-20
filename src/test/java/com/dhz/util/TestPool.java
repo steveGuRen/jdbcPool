@@ -7,15 +7,20 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.dhz.jdbc.AbstractConnection;
+
 public class TestPool {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(TestPool.class);
 
+	public static AtomicLong i = new AtomicLong(0);
+	
 	@Test
 	public void test() {
 		for(int i = 1; i < 10; i++) {
@@ -43,10 +48,13 @@ public class TestPool {
 		while(true) {
 			AbstractConnection asc = JdbcConnectFactory.getInstance().getConnection();
 			Connection t = asc.getConnection();
+			
 			try {
 				t.setAutoCommit(false);
 				doQuery(ptmt, rs, t);
 				t.commit();
+				TestPool.i.addAndGet(1);
+				System.out.println(TestPool.i.longValue());
 				i++;
 				if(i % 2000 == 0) {
 					LOGGER.debug("Connection: " + t + "is closed");
@@ -86,7 +94,7 @@ public class TestPool {
 				String b = rs.getString("key");
 				Date c = rs.getDate("createTime");
 				Date d = rs.getDate("updateTime");
-				System.out.println(a + " " + b + " " + c + " " + d);
+//				System.out.println(a + " " + b + " " + c + " " + d);
 			}
 		} catch (SQLException e) {
 		} finally {
