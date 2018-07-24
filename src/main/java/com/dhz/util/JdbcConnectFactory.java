@@ -60,6 +60,7 @@ public class JdbcConnectFactory extends Thread implements DataSource{
 		LOGGER.info("jdbc connection initial is complete.");
 		JdbcConnectFactory.isStart = false;
 		this.setName("DAEMON THREAD");
+		 this.setDaemon(true);
 		this.start();
 		LOGGER.info("pool daemon Thread is started.");
 	}
